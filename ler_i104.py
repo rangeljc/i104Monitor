@@ -1,18 +1,9 @@
 #script para fazer analise do monitoramento de pacotes do protocolo de automação i104
 # -*- coding: utf-8 -*-
+import pandas as pd
 import re
-#abrir arquivos em python
-arquivo = open(r'i104_modelo.txt')
-i = 1
-#for linha in arquivo.readlines():
-#    print(linha)
-#    if i == 10:
-#        break
-#    else:
-#        i=i+1
-#arquivo.close()
-lista =[]
-for linha in arquivo.readlines():
+
+def ManipulaLinha(linha):
     i=-1
     if linha.find('<-')!=-1:
         i = linha.find('<-')
@@ -30,40 +21,66 @@ for linha in arquivo.readlines():
         cabecalho = re.sub(r"^\s+|\s+$", "", linha[i+2:i+15])
         utr = re.sub(r"^\s+|\s+$", "", linha[i+15:i+20])
         informacao = re.sub(r"^\s+|\s+$", "", linha[i+20:])
-        if re.sub(r"^\s+|\s+$", "", linha[i+2:i+5])=='30':
+        
+        if re.sub(r"^\s+|\s+$", "", cabecalho[:3])=='30':
             tpFrame = 'Comando de SetPoint'
-            if re.sub(r"^\s+|\s+$", "", linha[i+8:i+11])=='06':
+            if re.sub(r"^\s+|\s+$", "", cabecalho[5:8])=='06':
                 causa = 'ATIVAÇÃO'
-            elif re.sub(r"^\s+|\s+$", "", linha[i+8:i+11])=='07':
+            elif re.sub(r"^\s+|\s+$", "", cabecalho[5:8])=='07':
                 causa = 'CONFIRMAÇÃO'
-            elif re.sub(r"^\s+|\s+$", "", linha[i+8:i+11])=='0a':
+            elif re.sub(r"^\s+|\s+$", "", cabecalho[5:8])=='0a':
                 causa = 'TÉRMINO'
             else:
                 causa = ''
-        elif re.sub(r"^\s+|\s+$", "", linha[i+2:i+5])=='6b':
+        elif re.sub(r"^\s+|\s+$", "", cabecalho[:3])=='6b':
             tpFrame = 'Comando de Teste'
-            if re.sub(r"^\s+|\s+$", "", linha[i+8:i+11])=='06':
+            if re.sub(r"^\s+|\s+$", "", cabecalho[5:8])=='06':
                 causa = 'ATIVAÇÃO'
-            elif re.sub(r"^\s+|\s+$", "", linha[i+8:i+11])=='07':
+            elif re.sub(r"^\s+|\s+$", "", cabecalho[5:8])=='07':
                 causa = 'CONFIRMAÇÃO'
-            elif re.sub(r"^\s+|\s+$", "", linha[i+8:i+11])=='0a':
+            elif re.sub(r"^\s+|\s+$", "", cabecalho[5:8])=='0a':
                 causa = 'TÉRMINO'
             else:
                 causa = ''
-        elif re.sub(r"^\s+|\s+$", "", linha[i+2:i+5])=='64':
+        elif re.sub(r"^\s+|\s+$", "", cabecalho[:3])=='64':
             tpFrame = 'Comando de Interrogação'
-            if re.sub(r"^\s+|\s+$", "", linha[i+8:i+11])=='06':
+            if re.sub(r"^\s+|\s+$", "", cabecalho[5:8])=='06':
                 causa = 'ATIVAÇÃO'
-            elif re.sub(r"^\s+|\s+$", "", linha[i+8:i+11])=='07':
+            elif re.sub(r"^\s+|\s+$", "", cabecalho[5:8])=='07':
                 causa = 'CONFIRMAÇÃO'
-            elif re.sub(r"^\s+|\s+$", "", linha[i+8:i+11])=='0a':
+            elif re.sub(r"^\s+|\s+$", "", cabecalho[5:8])=='0a':
                 causa = 'TÉRMINO'
             else:
                 causa = ''
         else:
             tpFrame = ''
             causa = ''
-        lista.append([horario, origem, tamanho, direcao, cabecalho, utr, tpFrame, causa])
-        
+        linha = [horario, origem, tamanho, direcao, cabecalho, utr, tpFrame, causa]
+    return linha
+
+arquivo = open(r'i104_modelo.txt')
+
+lista = []
+lista2 = []
+
+for l in arquivo.readlines():
+    line = ManipulaLinha(l)
+    if len(line)>2:
+        lista.append(line)
+    else:
+        lista2.append(line)
+
 arquivo.close()
-print(lista[:10])
+
+dtMon = pd.DataFrame(lista, columns=['Horário', 'Origem', 'Tamanho', 'Dir.',
+                                     'Cabeçalho', 'UTR', 'Tipo do Frame',
+                                     'Causa da Transmissão'])
+
+dtMsg = pd.DataFrame(lista2, columns=['Horário', 'Mensagem'])
+dtMsg = dtMsg.drop(dtMsg.index[[0]])#Apaga a primeira linha do arquivo
+
+
+dtMon.to_excel(r'C:\Empresa\dev\i104Analysis\mon_104.xlsx',
+               sheet_name='Monitoramento', index=False)
+dtMsg.to_excel(r'C:\Empresa\dev\i104Analysis\msgs_104.xlsx',
+               sheet_name='Mensagens', index=False)
